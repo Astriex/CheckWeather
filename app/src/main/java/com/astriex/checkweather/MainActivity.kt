@@ -15,6 +15,7 @@ import android.util.Log
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import com.astriex.checkweather.databinding.ActivityMainBinding
+import com.astriex.checkweather.utils.Constants
 import com.astriex.checkweather.utils.StringUtils.Companion.showMessage
 import com.google.android.gms.location.*
 import com.karumi.dexter.Dexter
@@ -36,6 +37,14 @@ class MainActivity : AppCompatActivity() {
 
         checkLocationService()
         checkPermissions()
+    }
+
+    private fun getLocationWeatherDetails() {
+        if(Constants.isNetworkAvailable(this)) {
+            showMessage(this, "you are connected to the internet")
+        } else {
+            showMessage(this, "no internet connection")
+        }
     }
 
     private fun checkLocationService() {
@@ -123,6 +132,8 @@ class MainActivity : AppCompatActivity() {
             Log.i("current latitude", "$latitude")
             val longitude = mLastLocation.longitude
             Log.i("current longitude", "$longitude")
+
+            getLocationWeatherDetails()
         }
     }
 }
