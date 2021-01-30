@@ -228,7 +228,25 @@ class MainActivity : AppCompatActivity() {
             tvSpeed.text = weatherList.wind.speed.toString()
             tvName.text = weatherList.name
             tvCountry.text = weatherList.sys.country
+
+            when(weatherList.weather[i].icon) {
+                "01d" -> ivMain.setImageResource(R.drawable.sunny)
+                "02d" -> ivMain.setImageResource(R.drawable.cloud)
+                "03d" -> ivMain.setImageResource(R.drawable.cloud)
+                "04d" -> ivMain.setImageResource(R.drawable.cloud)
+                "04n" -> ivMain.setImageResource(R.drawable.cloud)
+                "10d" -> ivMain.setImageResource(R.drawable.rain)
+                "11d" -> ivMain.setImageResource(R.drawable.storm)
+                "13d" -> ivMain.setImageResource(R.drawable.snowflake)
+                "01n" -> ivMain.setImageResource(R.drawable.cloud)
+                "02n" -> ivMain.setImageResource(R.drawable.cloud)
+                "03n" -> ivMain.setImageResource(R.drawable.cloud)
+                "10n" -> ivMain.setImageResource(R.drawable.cloud)
+                "11n" -> ivMain.setImageResource(R.drawable.rain)
+                "13n" -> ivMain.setImageResource(R.drawable.snowflake)
+            }
         }
+
     }
 
     private fun getUnit(value: String): String {
