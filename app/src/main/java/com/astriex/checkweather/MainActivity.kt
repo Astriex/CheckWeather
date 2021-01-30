@@ -2,6 +2,7 @@ package com.astriex.checkweather
 
 import android.Manifest
 import android.annotation.SuppressLint
+import android.app.Dialog
 import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
@@ -12,10 +13,15 @@ import android.os.Bundle
 import android.os.Looper
 import android.provider.Settings
 import android.util.Log
+import android.view.LayoutInflater
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import com.astriex.checkweather.databinding.ActivityMainBinding
+import com.astriex.checkweather.databinding.DialogCustomProgressBinding
+import com.astriex.checkweather.models.WeatherResponse
+import com.astriex.checkweather.network.WeatherService
 import com.astriex.checkweather.utils.Constants
+import com.astriex.checkweather.utils.Constants.BASE_URL
 import com.astriex.checkweather.utils.StringUtils.Companion.showMessage
 import com.google.android.gms.location.*
 import com.karumi.dexter.Dexter
@@ -23,10 +29,17 @@ import com.karumi.dexter.MultiplePermissionsReport
 import com.karumi.dexter.PermissionToken
 import com.karumi.dexter.listener.PermissionRequest
 import com.karumi.dexter.listener.multi.MultiplePermissionsListener
+import retrofit2.Call
+import retrofit2.Callback
+import retrofit2.Response
+import retrofit2.Retrofit
+import retrofit2.converter.gson.GsonConverterFactory
 
 class MainActivity : AppCompatActivity() {
     private lateinit var bindingMain: ActivityMainBinding
     private lateinit var mFusedLocationClient: FusedLocationProviderClient
+    private var mProgressDialog: Dialog? = null
+    private lateinit var bindingDialog: DialogCustomProgressBinding
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -39,11 +52,51 @@ class MainActivity : AppCompatActivity() {
         checkPermissions()
     }
 
-    private fun getLocationWeatherDetails() {
-        if(Constants.isNetworkAvailable(this)) {
-            showMessage(this, "you are connected to the internet")
+    private fun getLocationWeatherDetails(latitude: Double, longitude: Double) {
+        if (Constants.isNetworkAvailable(this)) {
+            val retrofit: Retrofit = Retrofit.Builder()
+                .baseUrl(BASE_URL)
+                .addConverterFactory(GsonConverterFactory.create())
+                .build()
+
+            val service: WeatherService = retrofit.create(WeatherService::class.java)
+
+            val listCall: Call<WeatherResponse> = service.getWeather(
+                latitude, longitude,
+                Constants.METRIC_UNIT,
+                Constants.APP_ID
+            )
+
+            showCustomProgressDialog()
+            listCall.enqueue(object: Callback<WeatherResponse> {
+                override fun onResponse(
+                    call: Call<WeatherResponse>,
+                    response: Response<WeatherResponse>
+                ) {
+                    if(response.isSuccessful) {
+                        hideProgressDialog()
+                        val weatherList: WeatherResponse = response.body()!!
+                        Log.i("Response Result", "$weatherList")
+                    } else {
+                        showErrorCodes(response)
+                    }
+                }
+
+                override fun onFailure(call: Call<WeatherResponse>, t: Throwable) {
+                    Log.e("Errorrrrr", t.message.toString())
+                    hideProgressDialog()
+                }
+            })
         } else {
             showMessage(this, "no internet connection")
+        }
+    }
+
+    private fun showErrorCodes(response: Response<WeatherResponse>) {
+        when (response.code()) {
+            400 -> Log.e("Error 400", "Bad Connection")
+            404 -> Log.e("Error 404", "Not Found")
+            else -> Log.e("Error", "Generic Error")
         }
     }
 
@@ -86,7 +139,8 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun showRationaleDialogForPermissions() {
-        AlertDialog.Builder(this).setMessage("Enable permissions in app settings.")
+        AlertDialog.Builder(this)
+            .setMessage("Enable permissions in app settings.")
             .setPositiveButton("GO TO SETTINGS") { _, _ ->
                 try {
                     goToSettings()
@@ -129,11 +183,21 @@ class MainActivity : AppCompatActivity() {
         override fun onLocationResult(locationResult: LocationResult?) {
             val mLastLocation: Location = locationResult!!.lastLocation
             val latitude = mLastLocation.latitude
-            Log.i("current latitude", "$latitude")
             val longitude = mLastLocation.longitude
-            Log.i("current longitude", "$longitude")
 
-            getLocationWeatherDetails()
+            getLocationWeatherDetails(latitude, longitude)
         }
+    }
+
+    private fun showCustomProgressDialog() {
+        bindingDialog = DialogCustomProgressBinding.inflate(LayoutInflater.from(this))
+        mProgressDialog = Dialog(this).apply {
+            setContentView(bindingDialog.root)
+            show()
+        }
+    }
+
+    private fun hideProgressDialog() {
+        mProgressDialog?.dismiss()
     }
 }
