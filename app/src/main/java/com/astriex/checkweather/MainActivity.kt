@@ -34,6 +34,8 @@ import retrofit2.Callback
 import retrofit2.Response
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
+import java.text.SimpleDateFormat
+import java.util.*
 
 class MainActivity : AppCompatActivity() {
     private lateinit var bindingMain: ActivityMainBinding
@@ -205,19 +207,44 @@ class MainActivity : AppCompatActivity() {
     @SuppressLint("SetTextI18n")
     private fun setupUI(weatherList: WeatherResponse) {
         for (i in weatherList.weather.indices) {
-            Log.i("weather name", weatherList.weather.toString())
-            bindingMain.tvMain.text = weatherList.weather[i].main
-            bindingMain.tvMainDescription.text = weatherList.weather[i].description
-            bindingMain.tvTemp.text =
-                "${weatherList.main.temp}${getUnit(application.resources.configuration.toString())}"
+            displayData(weatherList, i)
         }
     }
 
-    private fun getUnit(value: String): String? {
+    private fun displayData(
+        weatherList: WeatherResponse,
+        i: Int
+    ) {
+        bindingMain.apply {
+            tvMain.text = weatherList.weather[i].main
+            tvMainDescription.text = weatherList.weather[i].description
+            tvTemp.text =
+                "${weatherList.main.temp}${getUnit(application.resources.configuration.toString())}"
+            tvSunriseTime.text = unixTime(weatherList.sys.sunrise)
+            tvSunsetTime.text = unixTime(weatherList.sys.sunset)
+            tvHumidity.text = "${weatherList.main.humidity} percent"
+            tvMin.text = "${weatherList.main.temp_min} min"
+            tvMax.text = "${weatherList.main.temp_max} max"
+            tvSpeed.text = weatherList.wind.speed.toString()
+            tvName.text = weatherList.name
+            tvCountry.text = weatherList.sys.country
+        }
+    }
+
+    private fun getUnit(value: String): String {
         var value = "°C"
         if("US" == value || "LR" == value || "MM" == value) {
             value = "°F"
         }
         return  value
+    }
+
+    private fun unixTime(timex: Long): String {
+        // timestamp is in miliseconds so we have to convert it
+        val date = Date(timex*1000L)
+        val sdf = SimpleDateFormat("HH:mm", Locale.UK).apply {
+            timeZone = TimeZone.getDefault()
+        }
+        return sdf.format(date)
     }
 }
