@@ -6,6 +6,7 @@ import android.app.Dialog
 import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
+import android.content.SharedPreferences
 import android.location.Location
 import android.location.LocationManager
 import android.net.Uri
@@ -24,8 +25,11 @@ import com.astriex.checkweather.models.WeatherResponse
 import com.astriex.checkweather.network.WeatherService
 import com.astriex.checkweather.utils.Constants
 import com.astriex.checkweather.utils.Constants.BASE_URL
+import com.astriex.checkweather.utils.Constants.PREFERENCE_NAME
+import com.astriex.checkweather.utils.Constants.WEATHER_RESPONSE_DATA
 import com.astriex.checkweather.utils.StringUtils.Companion.showMessage
 import com.google.android.gms.location.*
+import com.google.gson.Gson
 import com.karumi.dexter.Dexter
 import com.karumi.dexter.MultiplePermissionsReport
 import com.karumi.dexter.PermissionToken
@@ -44,6 +48,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var mFusedLocationClient: FusedLocationProviderClient
     private var mProgressDialog: Dialog? = null
     private lateinit var bindingDialog: DialogCustomProgressBinding
+    private lateinit var mSharedPreferences: SharedPreferences
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -51,9 +56,11 @@ class MainActivity : AppCompatActivity() {
         setContentView(bindingMain.root)
 
         mFusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
+        mSharedPreferences = getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
 
         checkLocationService()
         checkPermissions()
+        setupUI()
     }
 
     private fun getLocationWeatherDetails(latitude: Double, longitude: Double) {
@@ -80,21 +87,25 @@ class MainActivity : AppCompatActivity() {
                     if (response.isSuccessful) {
                         hideProgressDialog()
                         val weatherList: WeatherResponse = response.body()!!
-                        setupUI(weatherList)
-                        Log.i("Response Result", "$weatherList")
+                        saveResponseToSharedPreferences(weatherList)
+                        setupUI()
                     } else {
                         showErrorCodes(response)
                     }
                 }
 
                 override fun onFailure(call: Call<WeatherResponse>, t: Throwable) {
-                    Log.e("Errorrrrr", t.message.toString())
                     hideProgressDialog()
                 }
             })
         } else {
             showMessage(this, "no internet connection")
         }
+    }
+
+    private fun saveResponseToSharedPreferences(weatherList: WeatherResponse) {
+        val weatherResponseJsonString = Gson().toJson(weatherList)
+        mSharedPreferences.edit().putString(WEATHER_RESPONSE_DATA, weatherResponseJsonString).commit()
     }
 
     private fun showErrorCodes(response: Response<WeatherResponse>) {
@@ -207,9 +218,13 @@ class MainActivity : AppCompatActivity() {
     }
 
     @SuppressLint("SetTextI18n")
-    private fun setupUI(weatherList: WeatherResponse) {
-        for (i in weatherList.weather.indices) {
-            displayData(weatherList, i)
+    private fun setupUI() {
+        val weatherResponseJsonString = mSharedPreferences.getString(WEATHER_RESPONSE_DATA, "")
+        if(!weatherResponseJsonString.isNullOrEmpty()) {
+            val weatherList = Gson().fromJson(weatherResponseJsonString, WeatherResponse::class.java)
+            for (i in weatherList.weather.indices) {
+                displayData(weatherList, i)
+            }
         }
     }
 
@@ -231,7 +246,7 @@ class MainActivity : AppCompatActivity() {
             tvName.text = weatherList.name
             tvCountry.text = weatherList.sys.country
 
-            when(weatherList.weather[i].icon) {
+            when (weatherList.weather[i].icon) {
                 "01d" -> ivMain.setImageResource(R.drawable.sunny)
                 "02d" -> ivMain.setImageResource(R.drawable.cloud)
                 "03d" -> ivMain.setImageResource(R.drawable.cloud)
@@ -253,15 +268,15 @@ class MainActivity : AppCompatActivity() {
 
     private fun getUnit(value: String): String {
         var value = "°C"
-        if("US" == value || "LR" == value || "MM" == value) {
+        if ("US" == value || "LR" == value || "MM" == value) {
             value = "°F"
         }
-        return  value
+        return value
     }
 
     private fun unixTime(timex: Long): String {
         // timestamp is in miliseconds so we have to convert it
-        val date = Date(timex*1000L)
+        val date = Date(timex * 1000L)
         val sdf = SimpleDateFormat("HH:mm", Locale.UK).apply {
             timeZone = TimeZone.getDefault()
         }
@@ -274,7 +289,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
-        return when(item.itemId) {
+        return when (item.itemId) {
             R.id.action_refresh -> {
                 requestLocationData()
                 true
