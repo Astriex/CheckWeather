@@ -68,14 +68,15 @@ class MainActivity : AppCompatActivity() {
             )
 
             showCustomProgressDialog()
-            listCall.enqueue(object: Callback<WeatherResponse> {
+            listCall.enqueue(object : Callback<WeatherResponse> {
                 override fun onResponse(
                     call: Call<WeatherResponse>,
                     response: Response<WeatherResponse>
                 ) {
-                    if(response.isSuccessful) {
+                    if (response.isSuccessful) {
                         hideProgressDialog()
                         val weatherList: WeatherResponse = response.body()!!
+                        setupUI(weatherList)
                         Log.i("Response Result", "$weatherList")
                     } else {
                         showErrorCodes(response)
@@ -199,5 +200,24 @@ class MainActivity : AppCompatActivity() {
 
     private fun hideProgressDialog() {
         mProgressDialog?.dismiss()
+    }
+
+    @SuppressLint("SetTextI18n")
+    private fun setupUI(weatherList: WeatherResponse) {
+        for (i in weatherList.weather.indices) {
+            Log.i("weather name", weatherList.weather.toString())
+            bindingMain.tvMain.text = weatherList.weather[i].main
+            bindingMain.tvMainDescription.text = weatherList.weather[i].description
+            bindingMain.tvTemp.text =
+                "${weatherList.main.temp}${getUnit(application.resources.configuration.toString())}"
+        }
+    }
+
+    private fun getUnit(value: String): String? {
+        var value = "°C"
+        if("US" == value || "LR" == value || "MM" == value) {
+            value = "°F"
+        }
+        return  value
     }
 }
